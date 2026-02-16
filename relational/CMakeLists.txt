@@ -1,0 +1,4 @@
+# relational/CMakeLists.txt
+add_library(relational_interface INTERFACE)
+target_include_directories(relational_interface INTERFACE ${CMAKE_SOURCE_DIR})
+target_link_libraries(relational_interface INTERFACE priority_wing_interface)

@@ -1,0 +1,4 @@
+# priority_wing/CMakeLists.txt
+add_library(priority_wing_interface INTERFACE)
+target_include_directories(priority_wing_interface INTERFACE ${CMAKE_SOURCE_DIR})
+target_link_libraries(priority_wing_interface INTERFACE core_static)
