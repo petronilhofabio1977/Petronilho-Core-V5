@@ -1,18 +1,11 @@
-# Build artifacts
-/build/
-/*.o
-/*.obj
-/*.a
-/*.so
-/*.exe
-
-# IDE files
-*.vscode/
-*.idea/
-
-# OS files
-.DS_Store
-*.swp
-
-# Archives
-*.zip
+*.log
+*.journal
+*.exe
+petronilho_universal
+reader_universal
+petronilho_core
+petronilho_final
+petronilho_reader
+bench_*
+net_stress_gen
+journal_inspector
