@@ -1,3 +1,5 @@
+#include "arena_thread_local.hpp"
+#include "arena_thread_local.hpp"
 #include "core/sys/sys_core.hpp"
 #include "core/sys/handle.hpp"
 #include "core/platform/cpu_dispatch.hpp"

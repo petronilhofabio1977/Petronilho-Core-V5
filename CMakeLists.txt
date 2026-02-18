@@ -15,3 +15,20 @@ add_subdirectory(relational)
 
 add_executable(test_network_ingest perf/test_network_ingest.cpp)
 target_link_libraries(test_network_ingest PRIVATE core_static)
+
+# --- Configuração de Benchmarks ---
+
+# Verifica se a biblioteca de Threads está disponível (necessário para o benchmark v5)
+find_package(Threads REQUIRED)
+
+# Define o executável do benchmark
+add_executable(research_suite bench/research_suite.cpp)
+
+# Aplica as otimizações de performance (O3 e march=native)
+target_compile_options(research_suite PRIVATE -O3 -march=native)
+
+# Linka com a biblioteca de Threads e outras necessárias
+target_link_libraries(research_suite PRIVATE Threads::Threads)
+
+# (Opcional) Define que o executável deve usar C++23
+target_compile_features(research_suite PRIVATE cxx_std_23)
