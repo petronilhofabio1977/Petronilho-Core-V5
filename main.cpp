@@ -1,3 +1,21 @@
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #include <windows.h>
+    #pragma comment(lib, "ws2_32.lib")
+    typedef int ssize_t;
+#else
+    #include <netinet/in.h>
+    #include <sys/socket.h>
+    #include <unistd.h>
+    #include <sched.h>
+    #define INVALID_SOCKET -1
+    typedef int SOCKET;
+#endif
+
 #include "super_core.hpp"
 #include <iomanip>
 #include <iostream>
@@ -8,22 +26,6 @@
 #include <atomic>
 #include <fcntl.h>
 
-// --- BLOCO DE COMPATIBILIDADE DE REDE E SISTEMA ---
-#ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
-    #include <windows.h> // <--- ESSENCIAL PARA TRAVAR O CORE NO WINDOWS
-    #pragma comment(lib, "ws2_32.lib")
-    typedef int ssize_t;
-#else
-    #include <netinet/in.h>
-    #include <sys/socket.h>
-    #include <unistd.h>
-    #include <sched.h> 
-    #define INVALID_SOCKET -1
-    typedef int SOCKET;
-#endif
-
 struct PerfEntry {
     uint32_t packet_id;
     uint64_t ts_ns;
@@ -32,16 +34,12 @@ struct PerfEntry {
 
 int main() {
 #ifdef _WIN32
-    // 1. Inicializa Rede no Windows
     WSADATA wsaData; WSAStartup(MAKEWORD(2, 2), &wsaData);
-    
-    // 2. Trava no Core 2 no Windows (Afinidade)
     HANDLE thread = GetCurrentThread();
-    DWORD_PTR mask = (static_cast<DWORD_PTR>(1) << 2); // Bit 2 = Core 2
+    DWORD_PTR mask = (static_cast<DWORD_PTR>(1) << 2); 
     SetThreadAffinityMask(thread, mask);
     std::cout << "[WIN32] Afinidade definida para Core 2." << std::endl;
 #else
-    // Trava no Core 2 no Linux
     cpu_set_t cpuset; CPU_ZERO(&cpuset); CPU_SET(2, &cpuset);
     sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
     std::cout << "[LINUX] Afinidade definida para Core 2." << std::endl;
@@ -53,10 +51,9 @@ int main() {
     log_buffer.reserve(MAX_LOG);
 
     try {
-        // Nome do log ajustado para Windows/Linux
-        petronilho::UniversalArena arena("prod_audit.log", 2 * GIGA); 
+        petronilho::UniversalArena arena("prod_audit.log", 2 * GIGA);
         SOCKET sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-        
+
 #ifdef _WIN32
         u_long mode = 1; ioctlsocket(sockfd, FIONBIO, &mode);
 #else
@@ -77,8 +74,7 @@ int main() {
         while (true) {
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - start_bench).count();
-            
-            if (elapsed >= 300) break; 
+            if (elapsed >= 300) break;
 
             RecordHeader* header_ptr = nullptr;
             void* payload_target = arena.allocate(1472, &header_ptr);
@@ -100,13 +96,12 @@ int main() {
         }
 
         std::cout << "\n\n[FINALIZANDO] Gravando registros no CSV..." << std::endl;
-        // Nome do arquivo diferente para não sobrescrever o do Linux se você usar a mesma pasta
         std::ofstream csv("petronilho_audit_win_5min.csv");
         csv << "ID,TS_NS,LAT_NS\n";
         for (const auto& entry : log_buffer) {
             csv << entry.packet_id << "," << entry.ts_ns << "," << entry.latency_ns << "\n";
         }
-        std::cout << "[SUCESSO] Relatório Windows gerado!" << std::endl;
+        std::cout << "[SUCESSO] Relatorio Windows gerado!" << std::endl;
 
     } catch (const std::exception& e) { std::cerr << "Falha: " << e.what() << std::endl; }
 

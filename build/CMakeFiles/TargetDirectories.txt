@@ -1,0 +1,13 @@
+/home/techmaster/SUPER_CORE_RUNTIME/build/CMakeFiles/test_network_ingest.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/CMakeFiles/research_suite.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/CMakeFiles/edit_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/CMakeFiles/rebuild_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/core/CMakeFiles/core_static.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/core/CMakeFiles/edit_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/core/CMakeFiles/rebuild_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/priority_wing/CMakeFiles/edit_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/priority_wing/CMakeFiles/rebuild_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/geometric_wing/CMakeFiles/edit_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/geometric_wing/CMakeFiles/rebuild_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/relational/CMakeFiles/edit_cache.dir
+/home/techmaster/SUPER_CORE_RUNTIME/build/relational/CMakeFiles/rebuild_cache.dir

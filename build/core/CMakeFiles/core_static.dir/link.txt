@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcore_static.a CMakeFiles/core_static.dir/sys/sys_core.cpp.o CMakeFiles/core_static.dir/platform/vcore_sse4.cpp.o
+/usr/bin/ranlib libcore_static.a

@@ -9,6 +9,9 @@
 
 // --- TRATAMENTO MULTIPLATAFORMA DE MEMÓRIA ---
 #ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
     #include <windows.h>
 #else
     #include <sys/mman.h>
@@ -41,7 +44,6 @@ private:
 public:
     UniversalArena(const std::string& filename, size_t size) : m_size(size), m_offset(0) {
 #ifdef _WIN32
-        // Implementação Windows: CreateFile + CreateFileMapping + MapViewOfFile
         m_file = CreateFileA(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
         if (m_file == INVALID_HANDLE_VALUE) throw std::runtime_error("Erro ao criar arquivo no Windows");
 
@@ -51,7 +53,6 @@ public:
         m_ptr = MapViewOfFile(m_map, FILE_MAP_ALL_ACCESS, 0, 0, size);
         if (!m_ptr) { CloseHandle(m_map); CloseHandle(m_file); throw std::runtime_error("Erro ao mapear visão no Windows"); }
 #else
-        // Implementação Linux: open + ftruncate + mmap
         m_fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
         if (m_fd < 0) throw std::runtime_error("Erro ao abrir arquivo no Linux");
         if (ftruncate(m_fd, size) != 0) throw std::runtime_error("Erro ao redimensionar arquivo");
@@ -75,9 +76,7 @@ public:
     void* allocate(size_t size, RecordHeader** out_header) {
         size_t total_size = size + sizeof(RecordHeader);
         size_t current_offset = m_offset.fetch_add(total_size);
-
         if (current_offset + total_size > m_size) return nullptr;
-
         uint8_t* base = static_cast<uint8_t*>(m_ptr) + current_offset;
         *out_header = reinterpret_cast<RecordHeader*>(base);
         return base + sizeof(RecordHeader);
@@ -85,5 +84,4 @@ public:
 };
 
 } // namespace petronilho
-
 #endif

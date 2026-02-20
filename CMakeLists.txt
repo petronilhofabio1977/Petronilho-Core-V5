@@ -32,3 +32,5 @@ target_link_libraries(research_suite PRIVATE Threads::Threads)
 
 # (Opcional) Define que o executável deve usar C++23
 target_compile_features(research_suite PRIVATE cxx_std_23)
+
+target_link_libraries(test_network_ingest PRIVATE core_static uring)
