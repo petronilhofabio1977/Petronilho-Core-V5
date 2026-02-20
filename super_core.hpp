@@ -2,61 +2,88 @@
 #define SUPER_CORE_HPP
 
 #include <iostream>
-#include <atomic>
-#include <chrono>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdexcept>
+#include <string>
 #include <cstdint>
+#include <stdexcept>
+#include <atomic>
+
+// --- TRATAMENTO MULTIPLATAFORMA DE MEMÓRIA ---
+#ifdef _WIN32
+    #include <windows.h>
+#else
+    #include <sys/mman.h>
+    #include <sys/stat.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+#endif
 
 struct RecordHeader {
-    uint64_t timestamp_ns; 
-    uint32_t payload_len;  
-    uint32_t magic_id;     
+    uint64_t timestamp_ns;
+    uint32_t payload_len;
+    uint32_t magic_id;
 };
 
 namespace petronilho {
 
 class UniversalArena {
-    uint8_t* memory;
-    size_t capacity;
-    int fd;
-    alignas(64) std::atomic<size_t> offset;
+private:
+    void* m_ptr;
+    size_t m_size;
+    std::atomic<size_t> m_offset;
+
+#ifdef _WIN32
+    HANDLE m_file = INVALID_HANDLE_VALUE;
+    HANDLE m_map = NULL;
+#else
+    int m_fd = -1;
+#endif
 
 public:
-    UniversalArena(const char* path, size_t size) : offset(0) {
-        fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
-        if (fd < 0) throw std::runtime_error("Erro ao criar arquivo de Journal.");
-        if (ftruncate(fd, size) != 0) throw std::runtime_error("Erro de redimensionamento.");
+    UniversalArena(const std::string& filename, size_t size) : m_size(size), m_offset(0) {
+#ifdef _WIN32
+        // Implementação Windows: CreateFile + CreateFileMapping + MapViewOfFile
+        m_file = CreateFileA(filename.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (m_file == INVALID_HANDLE_VALUE) throw std::runtime_error("Erro ao criar arquivo no Windows");
 
-        memory = (uint8_t*)mmap(nullptr, size, PROT_READ | PROT_WRITE, 
-                                MAP_SHARED | MAP_POPULATE, fd, 0);
+        m_map = CreateFileMapping(m_file, NULL, PAGE_READWRITE, (DWORD)(size >> 32), (DWORD)(size & 0xFFFFFFFF), NULL);
+        if (!m_map) { CloseHandle(m_file); throw std::runtime_error("Erro ao criar mapeamento no Windows"); }
 
-        if (memory == MAP_FAILED) {
-            memory = (uint8_t*)mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-            if (memory == MAP_FAILED) throw std::runtime_error("Falha critica de mmap.");
-        }
-        capacity = size;
+        m_ptr = MapViewOfFile(m_map, FILE_MAP_ALL_ACCESS, 0, 0, size);
+        if (!m_ptr) { CloseHandle(m_map); CloseHandle(m_file); throw std::runtime_error("Erro ao mapear visão no Windows"); }
+#else
+        // Implementação Linux: open + ftruncate + mmap
+        m_fd = open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+        if (m_fd < 0) throw std::runtime_error("Erro ao abrir arquivo no Linux");
+        if (ftruncate(m_fd, size) != 0) throw std::runtime_error("Erro ao redimensionar arquivo");
+        
+        m_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, m_fd, 0);
+        if (m_ptr == MAP_FAILED) throw std::runtime_error("Erro no mmap");
+#endif
     }
 
     ~UniversalArena() {
-        if (memory) munmap(memory, capacity);
-        if (fd >= 0) close(fd);
+#ifdef _WIN32
+        if (m_ptr) UnmapViewOfFile(m_ptr);
+        if (m_map) CloseHandle(m_map);
+        if (m_file != INVALID_HANDLE_VALUE) CloseHandle(m_file);
+#else
+        if (m_ptr) munmap(m_ptr, m_size);
+        if (m_fd >= 0) close(m_fd);
+#endif
     }
 
-    inline void* allocate(size_t data_size, RecordHeader** out_header) {
-        size_t total_size = sizeof(RecordHeader) + data_size;
-        total_size = (total_size + 63) & ~static_cast<size_t>(63);
-        size_t current = offset.fetch_add(total_size, std::memory_order_relaxed);
-        if (current + total_size > capacity) return nullptr;
-        uint8_t* block = memory + current;
-        *out_header = reinterpret_cast<RecordHeader*>(block);
-        return block + sizeof(RecordHeader);
-    }
+    void* allocate(size_t size, RecordHeader** out_header) {
+        size_t total_size = size + sizeof(RecordHeader);
+        size_t current_offset = m_offset.fetch_add(total_size);
 
-    void reset() { offset.store(0, std::memory_order_release); }
-    size_t get_offset() { return offset.load(std::memory_order_acquire); }
+        if (current_offset + total_size > m_size) return nullptr;
+
+        uint8_t* base = static_cast<uint8_t*>(m_ptr) + current_offset;
+        *out_header = reinterpret_cast<RecordHeader*>(base);
+        return base + sizeof(RecordHeader);
+    }
 };
-} 
+
+} // namespace petronilho
+
 #endif
