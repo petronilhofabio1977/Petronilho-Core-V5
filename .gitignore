@@ -1,11 +1,46 @@
-*.log
-*.journal
+# Binarios compilados
 *.exe
-petronilho_universal
-reader_universal
-petronilho_core
-petronilho_final
-petronilho_reader
+*.out
 bench_*
 net_stress_gen
 journal_inspector
+petronilho_core
+petronilho_final
+petronilho_reader
+petronilho_universal
+reader_universal
+test_network_ingest
+test_persistent_ingest
+bench_5min
+bench_audit
+bench_ring
+
+# Logs e dados de auditoria
+*.log
+*.journal
+*.bin
+
+# CSVs de teste (dados gerados, nao codigo)
+*.csv
+
+# Arquivos compactados
+*.zip
+
+# Build
+build/
+*.o
+*.a
+*.so
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Dados de performance
+perf/
+
+# Editor
+.vscode/
+*.swp
+*~
