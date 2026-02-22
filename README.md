@@ -1,16 +1,35 @@
-# 🚀 Petronilho Core V5: Ultra-Low Latency Ingestion Kernel
+# Petronilho Core V5
 
-Kernel de ingestão ultra-low latency desenvolvido por **Fábio Petronilho de Oliveira**.
+Sistema de ingestão UDP de baixa latência em C++17, desenvolvido por Fábio Petronilho de Oliveira.
 
-## 📍 Atalhos Rápidos
-- 🧠 **[Código Fonte do Core](src/super_core_universal.hpp)**
-- 🚀 **[Ingestor Principal](src/main_universal.cpp)**
-- 🛡️ **[Auditor de Dados](src/reader.cpp)**
-- 🐧 **[Script para Linux](scripts/run_test.sh)**
-- 🪟 **[Script para Windows](scripts/run_test.ps1)**
+## Resultados Reais
 
-## 🧠 Arquitetura
-Este sistema utiliza **Zero-Copy** e alocação **Lock-Free** para garantir performance determinística em sistemas de missão crítica.
+Testado em Intel Core i7-620M (2010) com Arch Linux:
 
-## ⚖️ Licença
-MIT License - Veja o arquivo [LICENSE](LICENSE).
+| Métrica | Resultado |
+|--------|-----------|
+| P50 de latência | 2,7 microssegundos |
+| P99 de latência | 27,7 microssegundos |
+| Pacotes em 300 segundos | 48,2 milhões |
+| Hardware | i7-620M, 2010 |
+
+## Técnicas Implementadas
+
+- Arena Allocator monotônico com complexidade O(1)
+- Ring Buffer lock-free com mmap zero-copy
+- CPU Affinity via sched_setaffinity
+- Socket UDP não bloqueante
+- Timestamping de alta resolução
+
+## Base Teórica
+
+Algoritmos baseados em Cormen et al. (CLRS): Capítulo 10 (Filas), Capítulo 11 (Gerenciamento de Memória), Capítulo 17 (Análise Amortizada).
+
+## Status
+
+Protótipo funcional em desenvolvimento ativo. Protocol Decoder e Shared Memory API em implementação.
+
+## Licença
+
+MIT License
+
