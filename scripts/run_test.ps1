@@ -1,34 +1,78 @@
-# PETRONILHO CORE V5 - WINDOWS AUTOMATION SCRIPT
+# PETRONILHO CORE V5 - Windows Build Script
+# Version: 2.0.0 | Author: Fabio Petronilho de Oliveira
+
 Clear-Host
-Write-Host "=== PETRONILHO CORE V5: WINDOWS DASHBOARD ===" -ForegroundColor Blue
+Write-Host "=== PETRONILHO CORE V5: WINDOWS BUILD ===" -ForegroundColor Blue
 
-# 1. Limpeza de arquivos antigos
-Write-Host "1. Limpando arquivos antigos..." -ForegroundColor Gray
-if (Test-Path "petronilho_universal.exe") { Remove-Item "petronilho_universal.exe" }
-if (Test-Path "reader_universal.exe") { Remove-Item "reader_universal.exe" }
-if (Test-Path "universal_audit.log") { Remove-Item "universal_audit.log" }
+# 1. Verifica dependencias
+Write-Host "1. Verificando dependencias..." -ForegroundColor Gray
 
-# 2. Compilação (Requer MinGW/GCC instalado no Windows)
-Write-Host "2. Compilando binarios de alta performance..." -ForegroundColor Gray
-g++ -O3 main_universal.cpp -o petronilho_universal.exe
-g++ -O3 reader.cpp -o reader_universal.exe
+$gcc = Get-Command g++ -ErrorAction SilentlyContinue
+$cmake = Get-Command cmake -ErrorAction SilentlyContinue
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERRO: O g++ nao foi encontrado ou falhou ao compilar." -ForegroundColor Red
-    exit
+if (-not $gcc) {
+    Write-Host "ERRO: g++ nao encontrado. Instale MinGW-w64." -ForegroundColor Red
+    Write-Host "Download: https://winlibs.com" -ForegroundColor Yellow
+    exit 1
 }
 
-# 3. Execução do Ingestor
-Write-Host "3. Executando Ingestor Universal..." -ForegroundColor Gray
-.\petronilho_universal.exe
+if (-not $cmake) {
+    Write-Host "ERRO: cmake nao encontrado. Instale CMake." -ForegroundColor Red
+    Write-Host "Download: https://cmake.org/download" -ForegroundColor Yellow
+    exit 1
+}
 
-# 4. Visualização dos Dados (Dashboard)
-Write-Host "4. Extraindo dados do log..." -ForegroundColor Gray
-.\reader_universal.exe
+Write-Host "   g++   : $($gcc.Source)" -ForegroundColor Green
+Write-Host "   cmake : $($cmake.Source)" -ForegroundColor Green
 
-# 5. Inspeção Hexadecimal (O "DNA" do arquivo no Windows)
-Write-Host "`n>> INSPECAO HEXADECIMAL (DNA DO ARQUIVO) <<" -ForegroundColor Cyan
-Format-Hex -Path .\universal_audit.log | Select-Object -First 10
+# 2. Limpa build anterior
+Write-Host "2. Limpando build anterior..." -ForegroundColor Gray
+if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+New-Item -ItemType Directory -Path "build" | Out-Null
 
-Write-Host "`n=== TESTE CONCLUIDO COM SUCESSO NO WINDOWS ===" -ForegroundColor Green
-Write-Host "Para limpar tudo, digite: rm *.log, *.exe" -ForegroundColor Yellow
+# 3. Configura com CMake
+Write-Host "3. Configurando CMake..." -ForegroundColor Gray
+Push-Location "build"
+
+cmake .. -G "MinGW Makefiles" `
+         -DCMAKE_BUILD_TYPE=Release `
+         -DCMAKE_CXX_FLAGS="-O3 -march=native"
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERRO: CMake falhou." -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+
+# 4. Compila
+Write-Host "4. Compilando..." -ForegroundColor Gray
+cmake --build . --config Release
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERRO: Compilacao falhou." -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+
+Pop-Location
+
+# 5. Executa governance check
+Write-Host "5. Verificando governanca..." -ForegroundColor Gray
+$python = Get-Command python -ErrorAction SilentlyContinue
+if ($python) {
+    python scripts/governance_check.py .
+} else {
+    Write-Host "   Python nao encontrado, pulando governance check." -ForegroundColor Yellow
+}
+
+# 6. Executa research_suite
+Write-Host "6. Executando benchmark..." -ForegroundColor Gray
+if (Test-Path "build\research_suite.exe") {
+    .\build\research_suite.exe
+} else {
+    Write-Host "   research_suite nao encontrado no build." -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host "=== BUILD CONCLUIDO ===" -ForegroundColor Green
+Write-Host "Binarios em: .\build\" -ForegroundColor Cyan
