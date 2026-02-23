@@ -1,51 +1,116 @@
-/**
- * @file heap_binary.hpp
- * @brief Heap Binário Máximo para Filas de Prioridade.
- * * ALGORITMO: Heapsort / Max-Heapify (CLRS Capítulo 6).
- * REFERÊNCIA: CLRS Capítulo 6 (Heapsort).
- * * POR QUE: Fornece a base para o escalonamento de tarefas. O layout em array 
- * permite que o pai de um nó no índice i seja encontrado em (i-1)/2 via shift.
- */
+// Layer: L1 | Version: 1.1.0 | Author: Fabio Petronilho de Oliveira
+//
+// ================================================================
+// heap_binary.hpp - Max-Heap Binario sobre Arena
+// ================================================================
+//
+// O QUE ESSE CODIGO FAZ:
+// Max-Heap: o maior elemento sempre no topo.
+// Complemento do binary_heap.hpp (Min-Heap).
+//
+// QUANDO USAR CADA UM:
+// Min-Heap (binary_heap.hpp): processar alertas do mais
+//   urgente para o menos urgente (menor timestamp primeiro)
+// Max-Heap (heap_binary.hpp): processar pelo maior valor,
+//   ex: pacote com maior anomalia sai primeiro
+//
+// ALGORITMO: Binary Heap (Max-Heap)
+// BASE TEORICA: Cormen Cap.6 - Heapsort
+// Cormen Cap.6.2: MAX-HEAPIFY O(log n)
+// Cormen Cap.6.5: HEAP-EXTRACT-MAX O(log n)
+// Cormen Cap.6.5: MAX-HEAP-INSERT O(log n)
+//
+// Complexidade Tempo : push O(log n), pop O(log n)
+// Complexidade Espaco: O(n) na Arena, zero malloc
+// ================================================================
 
 #pragma once
-#include "core/sys/handle.hpp"
 #include "core/sys/arena.hpp"
+#include "core/sys/handle.hpp"
+#include <cstddef>
 
-namespace super_core::priority {
+namespace petronilho::priority {
 
-template <typename T>
-class BinaryHeap {
-    sys::Handle<T> data_base;
-    uint32_t current_size;
-    uint32_t max_capacity;
+    template<typename T>
+    class MaxHeap {
+    private:
+        petronilho::sys::Handle<T>* m_data;
+        size_t                      m_capacity;
+        size_t                      m_size;
 
-public:
-    BinaryHeap(sys::Handle<T> base, uint32_t capacity) 
-        : data_base(base), current_size(0), max_capacity(capacity) {}
+        [[nodiscard]]
+        static size_t parent(size_t i) noexcept { return (i - 1) >> 1; }
+        [[nodiscard]]
+        static size_t left(size_t i)   noexcept { return (i << 1) + 1; }
+        [[nodiscard]]
+        static size_t right(size_t i)  noexcept { return (i << 1) + 2; }
 
-    /**
-     * @brief Mantém a propriedade de Max-Heap.
-     * Complexidade: O(log N)
-     * Impacto: Localidade de cache decrescente conforme desce na árvore.
-     */
-    void max_heapify(uint32_t i, sys::Arena& arena) noexcept {
-        T* arr = arena.resolve(data_base);
-        uint32_t largest = i;
-        uint32_t left = 2 * i + 1;
-        uint32_t right = 2 * i + 2;
+        // ============================================================
+        // max_heapify - Restaura propriedade do Max-Heap
+        // Cormen Cap.6.2: MAX-HEAPIFY iterativo O(log n)
+        // CORRECAO: versao anterior era recursiva
+        // ============================================================
+        void max_heapify(size_t i) noexcept {
+            while (true) {
+                size_t l       = left(i);
+                size_t r       = right(i);
+                size_t largest = i;
 
-        if (left < current_size && arr[left] > arr[largest]) largest = left;
-        if (right < current_size && arr[right] > arr[largest]) largest = right;
+                if (l < m_size && *m_data[largest] < *m_data[l])
+                    largest = l;
+                if (r < m_size && *m_data[largest] < *m_data[r])
+                    largest = r;
 
-        if (largest != i) {
-            T temp = arr[i];
-            arr[i] = arr[largest];
-            arr[largest] = temp;
-            max_heapify(largest, arena);
+                if (largest == i) break;
+
+                auto tmp         = m_data[i];
+                m_data[i]        = m_data[largest];
+                m_data[largest]  = tmp;
+                i                = largest;
+            }
         }
-    }
 
-    // Invariante: O elemento no índice 0 é sempre o maior (prioridade máxima).
-};
+    public:
+        MaxHeap(petronilho::sys::ScalableArena& arena,
+                size_t max_nodes) noexcept
+            : m_capacity(max_nodes)
+            , m_size(0)
+        {
+            auto h = arena.allocate<petronilho::sys::Handle<T>>(max_nodes);
+            m_data = h.get_ptr();
+        }
 
-} // namespace super_core::priority
+        // Cormen Cap.6.5: MAX-HEAP-INSERT O(log n)
+        void push(petronilho::sys::Handle<T> handle) noexcept {
+            if (m_size >= m_capacity) return;
+
+            size_t i  = m_size++;
+            m_data[i] = handle;
+
+            // Sobe enquanto maior que o pai
+            while (i > 0 && *m_data[parent(i)] < *m_data[i]) {
+                auto tmp          = m_data[i];
+                m_data[i]         = m_data[parent(i)];
+                m_data[parent(i)] = tmp;
+                i                 = parent(i);
+            }
+        }
+
+        // Cormen Cap.6.5: HEAP-EXTRACT-MAX O(log n)
+        [[nodiscard]]
+        petronilho::sys::Handle<T> pop() noexcept {
+            if (m_size == 0)
+                return petronilho::sys::Handle<T>::null();
+
+            auto root  = m_data[0];
+            m_data[0]  = m_data[--m_size];
+            max_heapify(0);
+            return root;
+        }
+
+        [[nodiscard]] bool   empty()    const noexcept { return m_size == 0; }
+        [[nodiscard]] size_t size()     const noexcept { return m_size; }
+        [[nodiscard]] size_t capacity() const noexcept { return m_capacity; }
+    };
+
+} // namespace petronilho::priority
